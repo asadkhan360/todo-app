@@ -1,198 +1,116 @@
-// MySQL database connection import
-const db = require('../config/database');
+const db = require('../config/database'); // pool based connection
 
 /* -------------------------
-   GET ALL TODOS (WITH SEARCH, DATE FILTER & PAGINATION)
+   GET ALL TODOS (SEARCH + DATE FILTER + PAGINATION)
 --------------------------*/
-exports.getAllTodos = (req, res, next) => {
-    // Query parameters se search, date aur page number le rahe hain
-    const { search, date, page = 1 } = req.query;
+exports.getAllTodos = async (req, res) => {
+    try {
+        const { search, date, page, limit } = req.query;
 
-    const limit = 10; // ek page me 10 records dikhaye
-    const offset = (page - 1) * limit; // page number ke hisaab se offset
+        const pageNum = parseInt(page) || 1;
+        const pageLimit = parseInt(limit) || 10;
+        const offset = (pageNum - 1) * pageLimit;
 
-    let where = "WHERE 1=1"; // base condition, jisse hum aage filters add kar sake
-    let params = []; // SQL query ke parameters
+        let where = "WHERE 1=1";
+        const params = [];
 
-    // Agar search query hai to title me search karenge
-    if (search) {
-        where += " AND title LIKE ?";
-        params.push(`%${search}%`); // % for partial match
-    }
+        if (search) {
+            where += " AND title LIKE ?";
+            params.push(`%${search}%`);
+        }
+        if (date) {
+            where += " AND DATE(created_at) = ?";
+            params.push(date);
+        }
 
-    // Agar date filter hai to us date ke records fetch karenge
-    if (date) {
-        where += " AND DATE(created_at) = ?";
-        params.push(date);
-    }
+        const [totalResult] = await db.query(`SELECT COUNT(*) as total FROM todos ${where}`, params);
+        const total = totalResult[0].total;
 
-    // Data fetch karne ki SQL query
-    const dataSql = `
-        SELECT * FROM todos
-        ${where}
-        ORDER BY id DESC
-        LIMIT ? OFFSET ?
-    `;
-
-    // Total records count karne ke liye SQL query (pagination ke liye)
-    const countSql = `
-        SELECT COUNT(*) as total FROM todos ${where}
-    `;
-
-    // Pehle total count query run karenge
-    db.query(countSql, params, (err, countResult) => {
-        if (err) return next(err);
-
-        const total = countResult[0].total; // total records
-
-        // Actual todos fetch karenge
-        db.query(
-            dataSql,
-            [...params, limit, offset],
-            (err, results) => {
-                if (err) return next(err);
-                // Response me data aur total count bhejenge
-                res.json({ data: results, total });
-            }
+        const [rows] = await db.query(
+            `SELECT * FROM todos ${where} ORDER BY id DESC LIMIT ? OFFSET ?`,
+            [...params, pageLimit, offset]
         );
-    });
+
+        res.json({ data: rows, total, page: pageNum, limit: pageLimit });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Database error" });
+    }
 };
 
 /* -------------------------
    GET TODO BY ID
 --------------------------*/
-exports.getTodoById = (req, res, next) => {
-    const id = req.params.id; // URL parameter se id le rahe hain
+exports.getTodoById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [rows] = await db.query("SELECT * FROM todos WHERE id = ?", [id]);
 
-    // Specific todo fetch karne ki query
-    db.query("SELECT * FROM todos WHERE id = ?", [id], (err, results) => {
-        if (err) return next(err);
+        if (rows.length === 0) return res.status(404).json({ message: "Todo not found" });
 
-        // Agar record nahi mila to 404 return
-        if (results.length === 0) {
-            return res.status(404).json({ message: "Todo not found" });
-        }
-
-        // Record mil gaya, send as JSON
-        res.json(results[0]);
-    });
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Database error" });
+    }
 };
 
 /* -------------------------
    CREATE TODO
 --------------------------*/
-exports.createTodo = (req, res) => {
-    const { title } = req.body;
+exports.createTodo = async (req, res) => {
+    try {
+        const { title } = req.body;
+        const wordCount = title.split(/\s+/).filter(w => w).length;
+        if (wordCount > 50) return res.status(400).json({ message: "Todo 50 words se zyada nahi ho sakta" });
 
-    // 🔒 WORD LIMIT CHECK (BACKEND)
-    const wordCount = title.split(/\s+/).filter(w => w).length;
-    if (wordCount > 50) {
-        return res.status(400).json({
-            message: 'Todo 50 words se zyada nahi ho sakta'
-        });
+        const [result] = await db.query("INSERT INTO todos (title) VALUES (?)", [title]);
+        res.status(201).json({ message: "Todo created", id: result.insertId });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Database error" });
     }
-
-    const sql = `
-        INSERT INTO todos (title)
-        VALUES (?)
-    `;
-
-    db.query(sql, [title], (err, result) => {
-        if (err) {
-            return res.status(500).json({ error: err });
-        }
-        res.json({ message: 'Todo created', id: result.insertId });
-    });
 };
 
 /* -------------------------
    UPDATE TODO
 --------------------------*/
-exports.updateTodo = (req, res) => {
-    const { title } = req.body;
-    const { id } = req.params;
+exports.updateTodo = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title } = req.body;
 
-    // 🔒 WORD LIMIT CHECK (BACKEND)
-    const wordCount = title.split(/\s+/).filter(w => w).length;
-    if (wordCount > 50) {
-        return res.status(400).json({
-            message: 'Todo 50 words se zyada nahi ho sakta'
-        });
+        const wordCount = title.split(/\s+/).filter(w => w).length;
+        if (wordCount > 50) return res.status(400).json({ message: "Todo 50 words se zyada nahi ho sakta" });
+
+        const [result] = await db.query(
+            "UPDATE todos SET title = ?, updated_at = NOW() WHERE id = ?",
+            [title, id]
+        );
+
+        if (result.affectedRows === 0) return res.status(404).json({ message: "Todo not found" });
+
+        const [rows] = await db.query("SELECT * FROM todos WHERE id = ?", [id]);
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Database error" });
     }
-
-    const updateSql = `
-        UPDATE todos
-        SET title = ?, updated_at = NOW()
-        WHERE id = ?
-    `;
-
-    db.query(updateSql, [title, id], (err) => {
-        if (err) {
-            return res.status(500).json({ error: err });
-        }
-
-        const selectSql = `
-            SELECT id, title, created_at, updated_at
-            FROM todos
-            WHERE id = ?
-        `;
-
-        db.query(selectSql, [id], (err, result) => {
-            if (err) {
-                return res.status(500).json({ error: err });
-            }
-            res.json(result[0]);
-        });
-    });
 };
-
-
 
 /* -------------------------
    DELETE TODO
 --------------------------*/
-exports.deleteTodo = (req, res, next) => {
-    const id = req.params.id; // URL parameter se id
+exports.deleteTodo = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [result] = await db.query("DELETE FROM todos WHERE id = ?", [id]);
 
-    // Delete query
-    db.query(
-        "DELETE FROM todos WHERE id = ?",
-        [id],
-        (err) => {
-            if (err) return next(err);
-            // Successfully deleted
-            res.json({ message: "Todo deleted" });
-        }
-    );
-};
+        if (result.affectedRows === 0) return res.status(404).json({ message: "Todo not found" });
 
-/* -------------------------
-   SIMPLE GET ALL TODOS (WITHOUT PAGINATION)
-   Optional search & date filter
---------------------------*/
-exports.getAllTodos = (req, res, next) => {
-    const { search, date } = req.query;
-
-    let sql = "SELECT * FROM todos WHERE 1=1"; // base query
-    let params = [];
-
-    // 🔍 Search by title
-    if (search) {
-        sql += " AND title LIKE ?";
-        params.push(`%${search}%`);
+        res.json({ message: "Todo deleted" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Database error" });
     }
-
-    // 📅 Filter by created date
-    if (date) {
-        sql += " AND DATE(created_at) = ?";
-        params.push(date);
-    }
-
-    sql += " ORDER BY id DESC"; // latest first
-
-    // Execute query
-    db.query(sql, params, (err, results) => {
-        if (err) return next(err);
-        res.json(results); // send results
-    });
 };

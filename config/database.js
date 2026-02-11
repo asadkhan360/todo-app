@@ -1,22 +1,26 @@
-// mysql2 package import kar rahe hain, ye MySQL database ke saath interact karne ke liye hota hai
 const mysql = require('mysql2');
 
-// MySQL database ka connection create kar rahe hain
-const connection = mysql.createConnection({
-    host: 'localhost',          // Ye MySQL server ka address hai, local machine ke liye localhost
-    user: 'root',               // Ye MySQL ka username, aksar root hota hai
-    password: '',               // Ye MySQL ka password, aapko apna set karna hoga
-    database: 'node_curd'       // Ye database ka naam jisse hum connect karna chahte hain
+// Connection pool create kar rahe hain
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,  // maximum 10 simultaneous connections
+  queueLimit: 0
 });
 
-// Connect kar rahe hain MySQL database se
-connection.connect((err) => {
-    if (err) {
-        console.error('Error connecting to MySQL:', err.message); // Agar connection fail ho jaye to error print hoga
-        return; // Agar error ho to function yahi ruk jaata hai
-    }
-    console.log('Connected to MySQL database: node_curd'); // Agar success ho to ye message console me aayega
-});
+// Promise wrapper for async/await queries
+const db = pool.promise();
 
-// Ye connection export kar     rahe hain taake dusre files (jaise controllers) me use ho sake
-module.exports = connection;
+db.getConnection()
+  .then(conn => {
+    console.log(`Connected to MySQL database: ${process.env.DB_NAME}`);
+    conn.release(); // connection release kar do, pool handle karega
+  })
+  .catch(err => {
+    console.error('Error connecting to MySQL:', err.message);
+  });
+
+module.exports = db;
