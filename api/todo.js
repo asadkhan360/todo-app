@@ -1,3 +1,4 @@
+const db = require('../config/database'); // remote DB connection
 const todoModel = require('../models/todo');
 
 export default function handler(req, res) {
@@ -14,8 +15,7 @@ export default function handler(req, res) {
         if (!title) return res.status(400).json({ message: 'Title required' });
 
         const wordCount = title.split(/\s+/).filter(w => w).length;
-        if (wordCount > 50)
-            return res.status(400).json({ message: 'Todo 50 words se zyada nahi ho sakta' });
+        if (wordCount > 50) return res.status(400).json({ message: 'Todo 50 words se zyada nahi ho sakta' });
 
         todoModel.createTodo({ title }, (err, result) => {
             if (err) return res.status(500).json({ error: err });

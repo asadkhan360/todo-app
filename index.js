@@ -1,5 +1,3 @@
-require('dotenv').config();  // ye top me ho
-
 // express ko import kar rahe hain, ye framework hai jo HTTP requests handle karta hai
 const express = require('express');
 
