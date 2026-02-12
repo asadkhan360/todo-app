@@ -1,47 +1,48 @@
-import mysql from 'mysql2/promise';
-import { config } from 'dotenv';
-config(); // .env ke variables load honge
+const todoModel = require('../models/todo');
 
-const connectionConfig = {
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-};
+export default function handler(req, res) {
+    const { method } = req;
 
-// Serverless handler
-export default async function handler(req, res) {
-    const connection = await mysql.createConnection(connectionConfig);
+    if (method === 'GET') {
+        todoModel.getAllTodos((err, results) => {
+            if (err) return res.status(500).json({ error: err });
+            res.status(200).json({ data: results, total: results.length });
+        });
+    }
+    else if (method === 'POST') {
+        const { title } = req.body;
+        if (!title) return res.status(400).json({ message: 'Title required' });
 
-    try {
-        if (req.method === 'GET') {
-            const [rows] = await connection.execute('SELECT * FROM todos ORDER BY id DESC');
-            res.status(200).json(rows);
-        } 
-        else if (req.method === 'POST') {
-            const { title } = req.body;
-            if (!title || title.split(/\s+/).filter(w => w).length > 50) {
-                return res.status(400).json({ message: "Invalid todo" });
-            }
-            const [result] = await connection.execute('INSERT INTO todos (title) VALUES (?)', [title]);
-            res.status(201).json({ id: result.insertId, title });
-        } 
-        else if (req.method === 'PUT') {
-            const { id, title } = req.body;
-            await connection.execute('UPDATE todos SET title=? WHERE id=?', [title, id]);
-            res.status(200).json({ id, title });
-        } 
-        else if (req.method === 'DELETE') {
-            const { id } = req.body;
-            await connection.execute('DELETE FROM todos WHERE id=?', [id]);
+        const wordCount = title.split(/\s+/).filter(w => w).length;
+        if (wordCount > 50)
+            return res.status(400).json({ message: 'Todo 50 words se zyada nahi ho sakta' });
+
+        todoModel.createTodo({ title }, (err, result) => {
+            if (err) return res.status(500).json({ error: err });
+            res.status(201).json({ message: 'Todo created', id: result.insertId });
+        });
+    }
+    else if (method === 'PUT') {
+        const id = req.query.id;
+        const { title } = req.body;
+        if (!id || !title) return res.status(400).json({ message: 'ID & Title required' });
+
+        todoModel.updateTodo(id, { title, updated_at: new Date() }, (err) => {
+            if (err) return res.status(500).json({ error: err });
+            res.status(200).json({ message: 'Todo updated' });
+        });
+    }
+    else if (method === 'DELETE') {
+        const id = req.query.id;
+        if (!id) return res.status(400).json({ message: 'ID required' });
+
+        todoModel.deleteTodo(id, (err) => {
+            if (err) return res.status(500).json({ error: err });
             res.status(200).json({ message: 'Todo deleted' });
-        } 
-        else {
-            res.status(405).json({ message: 'Method not allowed' });
-        }
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    } finally {
-        await connection.end();
+        });
+    }
+    else {
+        res.setHeader('Allow', ['GET','POST','PUT','DELETE']);
+        res.status(405).end(`Method ${method} Not Allowed`);
     }
 }
