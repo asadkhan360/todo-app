@@ -1,7 +1,7 @@
 // =====================
 // CONSTANTS & VARIABLES
 // =====================
-const API_URL = 'http://localhost:3000/todos'; // Backend ka URL
+const API_URL = '/api/todos'; // Vercel automatically serve karega
 let todos = [];         // Sare todos yaha store honge
 let currentPage = 1;    // Pagination ke liye current page
 const rowsPerPage = 10; // Ek page me kitne todos dikhaye jaenge

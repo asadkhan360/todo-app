@@ -1,5 +1,6 @@
 // express ko import kar rahe hain, ye framework hai jo HTTP requests handle karta hai
 const express = require('express');
+const db = require('./config/database'); // database.js me credentials env se read karwana
 
 // body-parser import kar rahe hain, ye middleware hai jo JSON request ka data parse karta hai
 const bodyParser = require('body-parser');
