@@ -10,25 +10,22 @@ const rowsPerPage = 10; // Ek page me kitne todos dikhaye jaenge
 // WINDOW ONLOAD
 // =====================
 window.onload = getTodos; // Page load hote hi todos fetch karo
-
-// =====================
-// FETCH TODOS FROM SERVER
-// =====================
 function getTodos() {
-    // Filters le rahe hain
     const search = document.getElementById('searchInput').value;
     const date = document.getElementById('dateFilter').value;
 
-    // URL construct kar rahe hain query params ke saath
     let url = API_URL + '?';
     if (search) url += `search=${encodeURIComponent(search)}&`;
     if (date) url += `date=${date}`;
 
     fetch(url)
         .then(res => res.json())
-        .then(data => {
-            todos = data; // Global array me store karo
-            if (todos.length === 0) {
+        .then(response => {
+
+            currentPage = 1;              // Pagination reset
+            todos = response.data;        // ✅ YAHI FIX HAI
+
+            if (!todos || todos.length === 0) {
                 document.getElementById('todoList').innerHTML = `
                     <tr>
                         <td colspan="5" class="text-center text-danger">
@@ -36,12 +33,12 @@ function getTodos() {
                         </td>
                     </tr>
                 `;
-                document.getElementById('pagination').innerHTML = ''; // Pagination clear karo
+                document.getElementById('pagination').innerHTML = '';
                 return;
             }
 
-            renderTable();       // Table render karo pagination ke saath
-            renderPagination();  // Pagination buttons render karo
+            renderTable();
+            renderPagination();
         })
         .catch(() => {
             showMessage('danger', '❌ Todos fetch nahi huye');
