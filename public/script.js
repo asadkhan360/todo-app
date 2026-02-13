@@ -1,7 +1,9 @@
 // =====================
 // CONSTANTS & VARIABLES
 // =====================
-const API_URL = 'http://localhost:3000/todos'; // Backend ka URL
+const API_URL = window.location.hostname === 'localhost'
+    ? 'http://localhost:3000/todos'
+    : '/api/todo';
 let todos = [];         // Sare todos yaha store honge
 let currentPage = 1;    // Pagination ke liye current page
 const rowsPerPage = 10; // Ek page me kitne todos dikhaye jaenge
