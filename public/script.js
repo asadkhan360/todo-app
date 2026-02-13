@@ -3,7 +3,8 @@
 // =====================
 const API_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:3000/todos'
-    : '/api/todo';
+    : 'https://todo-app-gamma-ecru-45.vercel.app/todos';
+
 let todos = [];         // Sare todos yaha store honge
 let currentPage = 1;    // Pagination ke liye current page
 const rowsPerPage = 10; // Ek page me kitne todos dikhaye jaenge
