@@ -1,46 +1,27 @@
-const mysql = require('mysql2/promise');
+// api/todo.js
+import db from '../config/database.js';
 
-module.exports = async (req, res) => {
-    try {
-        const connection = await mysql.createConnection({
-            host: process.env.DB_HOST,
-            user: process.env.DB_USER,
-            password: process.env.DB_PASS,
-            database: process.env.DB_NAME
-        });
+export default async function handler(req, res) {
+    if (req.method === 'POST') {
+        const { title } = req.body;
+        if (!title) return res.status(400).json({ message: 'Todo empty' });
 
-        // ===== GET TODOS =====
-        if (req.method === 'GET') {
-            const [rows] = await connection.execute(
-                'SELECT * FROM todos ORDER BY id DESC'
-            );
-
-            await connection.end();
-            return res.status(200).json({ data: rows });
+        try {
+            const [result] = await db.query('INSERT INTO todos (title) VALUES (?)', [title]);
+            res.status(201).json({ message: 'Todo created', id: result.insertId });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Database error' });
         }
-
-        // ===== CREATE TODO =====
-        if (req.method === 'POST') {
-            const { title } = req.body;
-
-            if (!title) {
-                return res.status(400).json({ message: 'Title required' });
-            }
-
-            await connection.execute(
-                'INSERT INTO todos (title, created_at, updated_at) VALUES (?, NOW(), NOW())',
-                [title]
-            );
-
-            await connection.end();
-            return res.status(201).json({ message: 'Todo created' });
+    } else if (req.method === 'GET') {
+        try {
+            const [rows] = await db.query('SELECT * FROM todos ORDER BY id DESC');
+            res.status(200).json({ data: rows });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Database error' });
         }
-
-        await connection.end();
-        return res.status(405).json({ message: 'Method Not Allowed' });
-
-    } catch (err) {
-        console.log(err);
-        return res.status(500).json({ error: err.message });
+    } else {
+        res.status(405).json({ message: `Method ${req.method} not allowed` });
     }
-};
+}
