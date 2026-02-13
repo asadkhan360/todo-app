@@ -1,5 +1,6 @@
 // api/todo.js
 import db from './config/database.js';
+
 export default async function handler(req, res) {
     if (req.method === 'POST') {
         const { title } = req.body;
