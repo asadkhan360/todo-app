@@ -9,6 +9,7 @@ module.exports = async (req, res) => {
             database: process.env.DB_NAME
         });
 
+        // ===== GET TODOS =====
         if (req.method === 'GET') {
             const [rows] = await connection.execute(
                 'SELECT * FROM todos ORDER BY id DESC'
@@ -18,10 +19,28 @@ module.exports = async (req, res) => {
             return res.status(200).json({ data: rows });
         }
 
-        res.status(405).json({ message: 'Method Not Allowed' });
+        // ===== CREATE TODO =====
+        if (req.method === 'POST') {
+            const { title } = req.body;
+
+            if (!title) {
+                return res.status(400).json({ message: 'Title required' });
+            }
+
+            await connection.execute(
+                'INSERT INTO todos (title, created_at, updated_at) VALUES (?, NOW(), NOW())',
+                [title]
+            );
+
+            await connection.end();
+            return res.status(201).json({ message: 'Todo created' });
+        }
+
+        await connection.end();
+        return res.status(405).json({ message: 'Method Not Allowed' });
 
     } catch (err) {
         console.log(err);
-        res.status(500).json({ error: err.message });
+        return res.status(500).json({ error: err.message });
     }
 };
