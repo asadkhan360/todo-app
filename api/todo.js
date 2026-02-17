@@ -1,10 +1,20 @@
-// api/todo.js
 const mysql = require('mysql2/promise');
 
 module.exports = async (req, res) => {
     let connection;
 
     try {
+        // ✅ Connection pehle banao
+        connection = await mysql.createConnection({
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: process.env.DB_NAME
+        });
+
+        // =========================
+        // GET - Search + Date Filter
+        // =========================
         if (req.method === 'GET') {
 
             const { search, date } = req.query;
@@ -30,30 +40,12 @@ module.exports = async (req, res) => {
             return res.status(200).json({ data: rows });
         }
 
-        // MySQL connection create kar rahe hain Vercel environment variables se
-        connection = await mysql.createConnection({
-            host: process.env.DB_HOST,
-            user: process.env.DB_USER,
-            password: process.env.DB_PASSWORD,
-            database: process.env.DB_NAME
-        });
-
         // =========================
-        // GET - Sab todos fetch karna
-        // =========================
-        if (req.method === 'GET') {
-            const [rows] = await connection.execute(
-                'SELECT * FROM todos ORDER BY id DESC'
-            );
-            await connection.end();
-            return res.status(200).json({ data: rows });
-        }
-
-        // =========================
-        // POST - Naya todo create karna
+        // POST
         // =========================
         if (req.method === 'POST') {
             const { title } = req.body;
+
             if (!title) {
                 return res.status(400).json({ message: 'Title required' });
             }
@@ -68,10 +60,11 @@ module.exports = async (req, res) => {
         }
 
         // =========================
-        // PUT - Todo edit/update karna
+        // PUT
         // =========================
         if (req.method === 'PUT') {
             const { id, title } = req.body;
+
             if (!id || !title) {
                 return res.status(400).json({ message: 'ID and Title required' });
             }
@@ -86,10 +79,11 @@ module.exports = async (req, res) => {
         }
 
         // =========================
-        // DELETE - Todo delete karna
+        // DELETE
         // =========================
         if (req.method === 'DELETE') {
             const { id } = req.body;
+
             if (!id) {
                 return res.status(400).json({ message: 'ID required' });
             }
@@ -103,7 +97,6 @@ module.exports = async (req, res) => {
             return res.status(200).json({ message: 'Todo deleted' });
         }
 
-        // Agar method GET/POST/PUT/DELETE nahi hai
         await connection.end();
         return res.status(405).json({ message: 'Method Not Allowed' });
 
@@ -112,6 +105,4 @@ module.exports = async (req, res) => {
         if (connection) await connection.end();
         return res.status(500).json({ error: err.message });
     }
-
-
 };
