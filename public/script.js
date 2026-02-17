@@ -12,6 +12,7 @@ const rowsPerPage = 10; // Ek page me kitne todos dikhaye jaenge
 // WINDOW ONLOAD
 // =====================
 window.onload = getTodos; // Page load hote hi todos fetch karo
+
 function getTodos() {
     const search = document.getElementById('searchInput').value;
     const date = document.getElementById('dateFilter').value;
@@ -21,9 +22,11 @@ function getTodos() {
     if (date) url += `date=${date}`;
 
     fetch(url)
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error('Failed to fetch todos');
+            return res.json();
+        })
         .then(response => {
-
             currentPage = 1;              // Pagination reset
             todos = response.data;        // ✅ YAHI FIX HAI
 
@@ -54,18 +57,14 @@ function renderTable() {
     const list = document.getElementById('todoList');
     list.innerHTML = ''; // Table clear kar rahe hain
 
-    // Pagination logic
     const start = (currentPage - 1) * rowsPerPage;
     const end = start + rowsPerPage;
     const pageTodos = todos.slice(start, end); // Current page ke todos
 
-    // Todos display kar rahe hain
     pageTodos.forEach((todo, index) => {
         list.innerHTML += `
             <tr>
-                <td>${start + index + 1}</td> <!-- Serial number -->
-
-                <!-- TODO TEXT & INPUT -->
+                <td>${start + index + 1}</td>
                 <td>
                     <span id="text-${todo.id}">${todo.title}</span>
                     <input type="text"
@@ -73,28 +72,18 @@ function renderTable() {
                         id="input-${todo.id}"
                         value="${todo.title}">
                 </td>
-
                 <td>${formatDate(todo.created_at)}</td>
                 <td>${formatDate(todo.updated_at)}</td>
-
-                <!-- ACTION BUTTONS -->
                 <td>
-                    <!-- EDIT -->
                     <button class="btn btn-warning btn-sm"
                         id="edit-${todo.id}"
                         onclick="editTodo(${todo.id})">✏️</button>
-
-                    <!-- SAVE -->
                     <button class="btn btn-success btn-sm d-none"
                         id="save-${todo.id}"
                         onclick="saveTodo(${todo.id})">💾</button>
-
-                    <!-- CANCEL -->
                     <button class="btn btn-secondary btn-sm d-none"
                         id="cancel-${todo.id}"
                         onclick="cancelEdit(${todo.id})">❌</button>
-
-                    <!-- DELETE -->
                     <button class="btn btn-danger btn-sm"
                         onclick="deleteTodo(${todo.id})">🗑</button>
                 </td>
@@ -107,24 +96,24 @@ function renderTable() {
 // EDIT MODE
 // =====================
 function editTodo(id) {
-    document.getElementById(`text-${id}`).classList.add('d-none');   // Text hide karo
-    document.getElementById(`input-${id}`).classList.remove('d-none'); // Input show karo
+    document.getElementById(`text-${id}`).classList.add('d-none');
+    document.getElementById(`input-${id}`).classList.remove('d-none');
 
-    document.getElementById(`edit-${id}`).classList.add('d-none');   // Edit button hide
-    document.getElementById(`save-${id}`).classList.remove('d-none'); // Save show
-    document.getElementById(`cancel-${id}`).classList.remove('d-none'); // Cancel show
+    document.getElementById(`edit-${id}`).classList.add('d-none');
+    document.getElementById(`save-${id}`).classList.remove('d-none');
+    document.getElementById(`cancel-${id}`).classList.remove('d-none');
 }
 
 // =====================
 // CANCEL EDIT
 // =====================
 function cancelEdit(id) {
-    document.getElementById(`text-${id}`).classList.remove('d-none');   // Text show
-    document.getElementById(`input-${id}`).classList.add('d-none');     // Input hide
+    document.getElementById(`text-${id}`).classList.remove('d-none');
+    document.getElementById(`input-${id}`).classList.add('d-none');
 
-    document.getElementById(`edit-${id}`).classList.remove('d-none');   // Edit show
-    document.getElementById(`save-${id}`).classList.add('d-none');      // Save hide
-    document.getElementById(`cancel-${id}`).classList.add('d-none');    // Cancel hide
+    document.getElementById(`edit-${id}`).classList.remove('d-none');
+    document.getElementById(`save-${id}`).classList.add('d-none');
+    document.getElementById(`cancel-${id}`).classList.add('d-none');
 }
 
 // =====================
@@ -132,28 +121,32 @@ function cancelEdit(id) {
 // =====================
 function saveTodo(id) {
     const newTitle = document.getElementById(`input-${id}`).value.trim();
-
     const wordCount = newTitle.split(/\s+/).filter(w => w).length;
 
     if (wordCount > 50) {
         showMessage('danger', '❌ Todo 50 words se zyada nahi ho sakta');
         return;
     }
-
     if (!newTitle) {
         showMessage('danger', 'Todo empty nahi ho sakta');
         return;
     }
 
-    fetch(`${API_URL}/${id}`, {
+    fetch(API_URL, { // ✅ id in body, no /${id} in URL
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTitle })
+        body: JSON.stringify({ id, title: newTitle })
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) throw new Error('Update failed');
+        return res.json();
+    })
     .then(() => {
         showMessage('success', '✏️ Todo updated successfully');
         getTodos();
+    })
+    .catch(() => {
+        showMessage('danger', '❌ Todo update nahi hua');
     });
 }
 
@@ -164,14 +157,11 @@ function addTodo() {
     const titleInput = document.getElementById('title');
     const title = titleInput.value.trim();
 
-    // 🔒 WORD LIMIT CHECK (50 words)
     const wordCount = title.split(/\s+/).filter(w => w).length;
-
     if (wordCount > 10) {
         showMessage('danger', '❌ Todo Cannot exceed 10 words');
         return;
     }
-
     if (!title) {
         showMessage('danger', 'Todo empty nahi ho sakta');
         return;
@@ -183,7 +173,7 @@ function addTodo() {
         body: JSON.stringify({ title })
     })
     .then(res => {
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error('Create failed');
         return res.json();
     })
     .then(() => {
@@ -202,18 +192,22 @@ function addTodo() {
 function deleteTodo(id) {
     if (!confirm("Delete karna hai?")) return;
 
-    fetch(`${API_URL}/${id}`, { method: 'DELETE' })
-        .then(res => {
-            if (!res.ok) throw new Error();
-            return res.json();
-        })
-        .then(() => {
-            showMessage('success', '🗑 Todo deleted successfully');
-            getTodos(); // Refresh list aur pagination
-        })
-        .catch(() => {
-            showMessage('danger', '❌ Todo delete nahi hua');
-        });
+    fetch(API_URL, { // ✅ id in body
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error('Delete failed');
+        return res.json();
+    })
+    .then(() => {
+        showMessage('success', '🗑 Todo deleted successfully');
+        getTodos();
+    })
+    .catch(() => {
+        showMessage('danger', '❌ Todo delete nahi hua');
+    });
 }
 
 // =====================
@@ -233,11 +227,10 @@ function renderPagination() {
     }
 }
 
-// Page switch karne ke liye
 function goToPage(page) {
     currentPage = page;
-    renderTable();       // Table update
-    renderPagination();  // Pagination update
+    renderTable();
+    renderPagination();
 }
 
 // =====================
@@ -249,38 +242,27 @@ function formatDate(dateString) {
     return d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString();
 }
 
-// Alert messages show karne ke liye
 function showMessage(type, message) {
     const alertBox = document.getElementById('alertBox');
-
     alertBox.innerHTML = `
         <div class="alert alert-${type} alert-dismissible fade show" role="alert">
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     `;
-
-    // 5 second me auto hide
-    setTimeout(() => {
-        alertBox.innerHTML = '';
-    }, 5000);
+    setTimeout(() => { alertBox.innerHTML = ''; }, 5000);
 }
 
-// Enter key press par search
 function handleEnter(e) {
-    if (e.key === "Enter") {
-        getTodos();
-    }
+    if (e.key === "Enter") getTodos();
 }
 
-// Filters clear karne ke liye
 function clearFilters() {
     document.getElementById('searchInput').value = '';
     document.getElementById('dateFilter').value = '';
-    currentPage = 1; // Reset page
+    currentPage = 1;
     getTodos();
 }
-
 
 function updateWordCount() {
     const input = document.getElementById('title');
@@ -292,7 +274,6 @@ function updateWordCount() {
 
     counter.innerText = `Words: ${words} / 50`;
 
-    // Limit cross ho to red color
     if (words > 50) {
         counter.classList.remove('text-muted');
         counter.classList.add('text-danger');
