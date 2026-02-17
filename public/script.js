@@ -168,7 +168,7 @@ function addTodo() {
     const wordCount = title.split(/\s+/).filter(w => w).length;
 
     if (wordCount > 10) {
-        showMessage('danger', '❌ Todo 10 words se zyada nahi ho sakta');
+        showMessage('danger', '❌ Todo Cannot exceed 10 words');
         return;
     }
 

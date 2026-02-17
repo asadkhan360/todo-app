@@ -58,20 +58,18 @@ exports.getTodoById = async (req, res) => {
 /* -------------------------
    CREATE TODO
 --------------------------*/
-const Todo = require('../models/todo');
+exports.createTodo = async (req, res) => {
+    try {
+        const { title } = req.body;
+        const wordCount = title.split(/\s+/).filter(w => w).length;
+        if (wordCount > 50) return res.status(400).json({ message: "Todo 50 words se zyada nahi ho sakta" });
 
-exports.createTodo = (req, res) => {
-    const { title } = req.body;
-    const wordCount = title.split(/\s+/).filter(w => w).length;
-    if (wordCount > 50) return res.status(400).json({ message: "Todo 50 words se zyada nahi ho sakta" });
-
-    Todo.createTodo({ title }, (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ message: "Database error" });
-        }
+        const [result] = await db.query("INSERT INTO todos (title) VALUES (?)", [title]);
         res.status(201).json({ message: "Todo created", id: result.insertId });
-    });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Database error" });
+    }
 };
 
 /* -------------------------
