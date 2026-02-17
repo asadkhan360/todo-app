@@ -5,6 +5,31 @@ module.exports = async (req, res) => {
     let connection;
 
     try {
+        if (req.method === 'GET') {
+
+            const { search, date } = req.query;
+
+            let sql = 'SELECT * FROM todos WHERE 1=1';
+            const params = [];
+
+            if (search && search.trim() !== '') {
+                sql += ' AND title LIKE ?';
+                params.push(`%${search}%`);
+            }
+
+            if (date && date.trim() !== '') {
+                sql += ' AND DATE(created_at) = ?';
+                params.push(date);
+            }
+
+            sql += ' ORDER BY id DESC';
+
+            const [rows] = await connection.execute(sql, params);
+
+            await connection.end();
+            return res.status(200).json({ data: rows });
+        }
+
         // MySQL connection create kar rahe hain Vercel environment variables se
         connection = await mysql.createConnection({
             host: process.env.DB_HOST,
@@ -87,4 +112,6 @@ module.exports = async (req, res) => {
         if (connection) await connection.end();
         return res.status(500).json({ error: err.message });
     }
+
+
 };
