@@ -3,126 +3,73 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Todo App | Task Manager</title>
+    <title>Todo App (Node + MySQL)</title>
 
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #f4f6f9;
-        }
-
-        .main-card {
-            border-radius: 15px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-        }
-
-        .table thead th {
-            vertical-align: middle;
-        }
-
-        .btn {
-            border-radius: 8px;
-        }
-
-        .form-control {
-            border-radius: 8px;
-        }
-
-        .page-link {
-            border-radius: 6px;
-        }
-    </style>
 </head>
 
-<body>
+<body class="bg-light">
 
-    <div class="container py-5">
+    <div class="container mt-5">
 
-        <!-- HEADER -->
-        <div class="text-center mb-4">
-            <h2 class="fw-bold"> Todo Manager</h2>
-            <p class="text-muted">Manage your daily tasks efficiently</p>
-        </div>
-
+        <h1 class="text-center mb-4">📝 Todo App</h1>
         <div id="alertBox"></div>
 
-        <!-- FILTER SECTION -->
-        <div class="card main-card mb-4">
-            <div class="card-body">
-                <div class="row g-3 align-items-end">
+        <!-- FILTER BAR -->
+        <div class="row mb-3">
+            <div class="col-md-5">
+                <input type="text" id="searchInput" class="form-control" placeholder="Search todo..."
+                    onkeydown="handleEnter(event)">
+            </div>
 
-                    <div class="col-md-5 col-sm-12">
-                        <label class="form-label">Search Task</label>
-                        <input type="text" id="searchInput" class="form-control"
-                            placeholder="Search todo..."
-                            onkeydown="handleEnter(event)">
-                    </div>
+            <div class="col-md-4">
+                <input type="date" id="dateFilter" class="form-control">
+            </div>
 
-                    <div class="col-md-4 col-sm-12">
-                        <label class="form-label">Filter by Date</label>
-                        <input type="date" id="dateFilter" class="form-control">
-                    </div>
+            <div class="col-md-3">
+                <button class="btn btn-dark w-100" onclick="getTodos()">Search</button>
+                <button class="btn btn-secondary w-100" onclick="clearFilters()">Clear</button>
 
-                    <div class="col-md-3 col-sm-12 d-grid gap-2">
-                        <button class="btn btn-dark" onclick="getTodos()">Search</button>
-                        <button class="btn btn-outline-secondary" onclick="clearFilters()">Clear</button>
-                    </div>
-
-                </div>
             </div>
         </div>
 
-        <!-- ADD TODO SECTION -->
-        <div class="card main-card mb-4">
+        <!-- ADD TODO -->
+        <div class="card mb-4">
             <div class="card-body">
-                <label class="form-label">Add New Task</label>
-                <input type="text" id="title" class="form-control"
-                    placeholder="Enter todo (max 10 words)"
+                <input type="text" id="title" class="form-control" placeholder="Enter todo (max 10 words)"
                     oninput="updateWordCount()">
+                <small id="wordCounter" class="text-muted">
+                    Words: 0 /10
+                </small>
 
-                <div class="d-flex justify-content-between align-items-center mt-2">
-                    <small id="wordCounter" class="text-muted">
-                        Words: 0 / 10
-                    </small>
-                    <button class="btn btn-primary" onclick="addTodo()">
-                        + Add Task
-                    </button>
-                </div>
+                <button class="btn btn-primary mt-2" onclick="addTodo()">Add Todo</button>
             </div>
         </div>
 
         <!-- TODO TABLE -->
-        <div class="card main-card">
+        <div class="card">
             <div class="card-body">
 
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle text-center">
-                        <thead class="table-dark">
-                            <tr>
-                                <th style="width: 5%;">#</th>
-                                <th style="width: 30%;">Task</th>
-                                <th style="width: 20%;">Created</th>
-                                <th style="width: 20%;">Updated</th>
-                                <th style="width: 25%;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="todoList">
-                            <!-- JS rows -->
-                        </tbody>
-                    </table>
-                </div>
+                <table class="table table-bordered table-striped text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>#</th>
+                            <th>Todo</th>
+                            <th>Created At</th>
+                            <th>Updated At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="todoList">
+                        <!-- rows JS se aayengi -->
+                    </tbody>
+                </table>
 
                 <!-- PAGINATION -->
-                <nav class="mt-3">
+                <nav>
                     <ul class="pagination justify-content-center" id="pagination">
-                        <!-- JS buttons -->
+                        <!-- buttons JS se -->
                     </ul>
                 </nav>
 
